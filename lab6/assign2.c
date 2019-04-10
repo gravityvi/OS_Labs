@@ -9,8 +9,6 @@
 int buffer[BUFFER_SIZE];
 sem_t mutex,wrt;
 int readcnt;
-int n=0;
-int m=0;
 pthread_t readerThread[50],writerThread[50];
 
 void init()
@@ -23,29 +21,35 @@ void init()
 
 void *writer(void *param)
 {
-    int wrtCnt=0;
+    int id = (int )param;
+    int wrtCnt=1;
 	do {
     // writer requests for critical section
+    printf("Caretaker %d queues\n",id);
     sem_wait(&wrt);  
    
     // performs the write
-    n++;
-    m++;
+    printf("Caretaker %d enters\n",id);
     wrtCnt++;
+    sleep(2);
     // leaves the critical section
     sem_post(&wrt);
+    printf("Caretaker %d exits\n",id);
+    sleep(5);
 
-    } while(wrtCnt<=50000000);
+    } while(wrtCnt>=0);
 }
 
 void *reader(void *param)
 {
-    int cnt=0;
+    int id = (int )param;
+    int cnt=1;
 	do {
     
    // Reader wants to enter the critical section
+   printf("Animal %d queues\n",id);
    sem_wait(&mutex);
-
+   
    // The number of readers has now increased by 1
    readcnt++;                          
 
@@ -60,11 +64,8 @@ void *reader(void *param)
    sem_post(&mutex);                   
 
    // current reader performs reading here
-   if(cnt%1000000==0)
-   {
-       printf("n is %d\n",n);
-       printf("m is %d\n",m);
-   }
+   printf("Animal %d enters (%d)\n",id,readcnt);
+   sleep(2);
    cnt++;
    sem_wait(&mutex);   // a reader wants to leave
 
@@ -75,23 +76,27 @@ void *reader(void *param)
        sem_post(&wrt);         // writers can enter
 
    sem_post(&mutex); // reader leaves
+   printf("Animals %d exits\n",id);
+   sleep(5);
 
-} while(cnt<=50000000);
+} while(cnt>=0);
 }
 
 int main()
 {
 	init();
-	int no_of_writers=2;
-    int no_of_readers=2;
+	int no_of_writers=5;
+    int no_of_readers=5;
 	int i;
 	for(i=0;i<no_of_writers;i++)
 	{
-		pthread_create(&writerThread[i],NULL,writer,&i);
+		pthread_create(&writerThread[i],NULL,writer,(void *)i );
+        printf("Caretaker %d created\n",i);
 	}
 	for(i=0;i<no_of_readers;i++)
 	{
-		pthread_create(&readerThread[i],NULL,reader, &i);
+		pthread_create(&readerThread[i],NULL,reader,(void *)i);
+        printf("Animal %d created\n",i);
 	}
 	for(i=0;i<no_of_writers;i++)
 	{
@@ -101,7 +106,6 @@ int main()
 	{
 		pthread_join(readerThread[i],NULL);
 	}
+    while(1);
 
-    printf("Final value of n is %d\n",n);
-    printf("Final value of m is %d\n",m);
 }
